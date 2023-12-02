@@ -1,37 +1,39 @@
 package main
 
 import (
-	"context"
-	"flag"
 	"log"
 	tgClient "project_test/clients/telegram"
+	"project_test/config"
 	"project_test/consumer/event-consumer"
 	"project_test/events/telegram"
-	"project_test/storage/sqlite"
+	"project_test/storage/files"
+	//"read-adviser-bot/storage/mongo"
 )
 
 const (
-	tgBotHost = "api.telegram.org"
-	// storagePath = "files_storage"
-	storageSQLitePath = "data/sqlite/storage.db"
+	tgBotHost         = "api.telegram.org"
+	storagePath       = "files_storage"
 	batchSize         = 100
+	sqliteStoragePath = "data/sqlite/storage.db"
 )
 
 func main() {
-	//cfg := config.MustLoad()
-	//storage := files.New(storagePath)
-	//storage := mongo.New(cfg.MongoConnectionString, 10*time.Second)
-	storage, err := sqlite.New(storageSQLitePath)
-	if err != nil {
-		log.Fatalf("can`t connect to storage: ", err)
-	}
+	cfg := config.MustLoad()
 
-	if err := storage.Init(context.TODO()); err != nil {
-		log.Fatalf("can`t init storage: ", err)
-	}
+	storage := files.New(storagePath)
+	//storage := mongo.New(cfg.MongoConnectionString, 10*time.Second)
+
+	//storage, err := sqlite.New(sqliteStoragePath)
+	//if err != nil {
+	//	log.Fatal("can`t connect to storage: ", err)
+	//}
+	//
+	//if err := storage.Init(context.TODO()); err != nil {
+	//	log.Fatal("can`t init storage: ", err)
+	//}
 
 	eventsProcessor := telegram.New(
-		tgClient.New(tgBotHost, mustToken() /*cfg.TgBotToken*/),
+		tgClient.New(tgBotHost, cfg.TgBotToken),
 		storage,
 	)
 
@@ -42,20 +44,4 @@ func main() {
 	if err := consumer.Start(); err != nil {
 		log.Fatal("service is stopped", err)
 	}
-}
-
-func mustToken() string {
-	token := flag.String(
-		"tg-bot-token",
-		"",
-		"token for access to telegram bot",
-	)
-
-	flag.Parse()
-
-	if *token == "" {
-		log.Fatal("token is not specified")
-	}
-
-	return *token
 }
